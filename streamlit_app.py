@@ -58,9 +58,9 @@ elif st.session_state.spielgestartet and not st.session_state.verloren:
     verstrichen = time.time() - st.session_state.timer_start
     fortschritt = max(0, 1 - verstrichen / zeitlimit)
 
-    # --- Fortschrittsbalken (HTML, für Farbe) ---
+    # --- Fortschrittsbalken (HTML) ---
     balken_html = f"""
-    <div style='width: 100%; background-color: #ddd; border-radius: 10px; height: 25px; margin-top: 30px;'>
+    <div style='width: 100%; background-color: #ddd; border-radius: 10px; height: 25px; margin-top: 40px;'>
         <div style='width: {fortschritt*100}%;
                     background-color: {farbe};
                     height: 25px;
@@ -70,10 +70,6 @@ elif st.session_state.spielgestartet and not st.session_state.verloren:
     </div>
     """
     st.markdown(balken_html, unsafe_allow_html=True)
-
-    # --- Countdown-Zahl ---
-    restzeit = int(max(0, zeitlimit - verstrichen))
-    st.markdown(f"<h4 style='text-align:center;'>⏳ Noch {restzeit} Sekunden</h4>", unsafe_allow_html=True)
 
     # --- Button unten ---
     st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
@@ -86,6 +82,11 @@ elif st.session_state.spielgestartet and not st.session_state.verloren:
     if verstrichen >= zeitlimit:
         st.session_state.aktiver_spieler = (aktueller_index + 1) % len(spieler)
         st.session_state.timer_start = time.time()
+        st.rerun()
+    else:
+        # Seite automatisch neu laden, damit der Balken sichtbar „tickt“
+        st.experimental_set_query_params(refresh=time.time())
+        time.sleep(0.1)
         st.rerun()
 
 # --- VERLOREN BILDSCHIRM ---
