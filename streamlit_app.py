@@ -3,41 +3,47 @@ import time
 
 st.set_page_config(page_title="Nur falsche Antworten", page_icon="🎯", layout="centered")
 
-st.title("🎯 Nur falsche Antworten – Das Spiel")
-
 # --- SESSION STATE INITIALISIERUNG ---
+if "spielgestartet" not in st.session_state:
+    st.session_state.spielgestartet = False
 if "spieler" not in st.session_state:
     st.session_state.spieler = []
 if "aktiver_spieler" not in st.session_state:
     st.session_state.aktiver_spieler = 0
-if "spielgestartet" not in st.session_state:
-    st.session_state.spielgestartet = False
 if "verloren" not in st.session_state:
     st.session_state.verloren = None
 if "timer_start" not in st.session_state:
     st.session_state.timer_start = None
 
-# --- SPIELSETUP (nur sichtbar, wenn Spiel noch NICHT gestartet) ---
+st.title("🎯 Nur falsche Antworten – Das Spiel")
+
+# ======================================================
+# 🧩 SETUP-PHASE
+# ======================================================
 if not st.session_state.spielgestartet and not st.session_state.verloren:
+
     st.header("🧑‍🤝‍🧑 Wie viele Spieler seid ihr?")
-    anzahl = st.number_input("Anzahl Spieler", min_value=2, max_value=10, step=1, key="anzahl_spieler")
+    anzahl = st.number_input("Anzahl Spieler", min_value=2, max_value=10, step=1, key="anzahl")
 
+    # Eingabefelder nur anzeigen, wenn Anzahl gesetzt ist
     namen = []
-    for i in range(int(anzahl)):
-        name = st.text_input(f"Name von Spieler {i+1}", key=f"name_{i}")
-        namen.append(name)
+    if anzahl:
+        for i in range(int(anzahl)):
+            name = st.text_input(f"Name von Spieler {i+1}", key=f"name_{i}")
+            namen.append(name)
 
-    start = st.button("🎬 Spiel starten")
-    if start:
+    if st.button("🎬 Spiel starten"):
         if all(namen):
             st.session_state.spieler = namen
             st.session_state.spielgestartet = True
             st.session_state.timer_start = time.time()
-            st.rerun()
+            st.experimental_rerun()
         else:
             st.warning("❗ Bitte tragt alle Namen ein!")
 
-# --- SPIEL LAUFEND (Setup verschwindet komplett) ---
+# ======================================================
+# 🎮 SPIEL-LÄUFT-PHASE
+# ======================================================
 elif st.session_state.spielgestartet and not st.session_state.verloren:
     spieler = st.session_state.spieler
     aktueller_index = st.session_state.aktiver_spieler
@@ -45,7 +51,7 @@ elif st.session_state.spielgestartet and not st.session_state.verloren:
 
     st.subheader(f"🔔 {aktueller} ist dran!")
 
-    # --- Farbrotation ---
+    # --- Farben für Spieler ---
     farben_dict = {
         2: ["#ff4b4b", "#4b8bff"],
         3: ["#ff4b4b", "#4b8bff", "#36d67c"],
@@ -78,22 +84,24 @@ elif st.session_state.spielgestartet and not st.session_state.verloren:
     if st.button(f"❌ {aktueller} hat eine richtige Antwort gesagt!"):
         st.session_state.verloren = aktueller
         st.session_state.spielgestartet = False
-        st.rerun()
+        st.experimental_rerun()
 
-    # --- Zeit abgelaufen → nächster Spieler ---
+    # --- Wenn Zeit abgelaufen ist → nächster Spieler ---
     if verstrichen >= zeitlimit:
         st.session_state.aktiver_spieler = (aktueller_index + 1) % len(spieler)
         st.session_state.timer_start = time.time()
-        st.rerun()
+        st.experimental_rerun()
     else:
-        # Seite kurz neu laden, um Bewegung zu zeigen
+        # kurze Pause, um Animation zu zeigen
         time.sleep(0.1)
-        st.rerun()
+        st.experimental_rerun()
 
-# --- VERLOREN-BILDSCHIRM ---
+# ======================================================
+# 💥 VERLOREN-PHASE
+# ======================================================
 elif st.session_state.verloren:
     st.error(f"💥 {st.session_state.verloren} hat verloren!")
     if st.button("🔁 Neues Spiel starten"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
-        st.rerun()
+        st.experimental_rerun()
