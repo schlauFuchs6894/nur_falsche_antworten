@@ -14,6 +14,8 @@ if "spielgestartet" not in st.session_state:
     st.session_state.spielgestartet = False
 if "verloren" not in st.session_state:
     st.session_state.verloren = None
+if "stop" not in st.session_state:
+    st.session_state.stop = False
 
 # --- SPIELSETUP ---
 if not st.session_state.spielgestartet:
@@ -29,6 +31,7 @@ if not st.session_state.spielgestartet:
         if all(namen):
             st.session_state.spieler = namen
             st.session_state.spielgestartet = True
+            st.session_state.stop = False
         else:
             st.warning("Bitte tragt alle Namen ein!")
 
@@ -38,30 +41,45 @@ else:
     aktueller = spieler[st.session_state.aktiver_spieler]
     st.subheader(f"🔔 {aktueller} ist dran!")
 
+    # Balkenfarbe abwechselnd rot / blau / rot / blau ...
+    farben = ["#ff4b4b", "#4b8bff"]  # Rot / Blau
+    farbe = farben[st.session_state.aktiver_spieler % 2]
+
     zeitlimit = 10  # Sekunden pro Runde
-    balken = st.empty()  # Platzhalter für den Fortschrittsbalken
-
+    platzhalter = st.empty()
     startzeit = time.time()
-    while time.time() - startzeit < zeitlimit:
-        verstrichen = time.time() - startzeit
-        fortschritt = max(0, 1 - verstrichen / zeitlimit)
-        balken.progress(fortschritt)
-        time.sleep(0.1)
 
-        # Wenn Spieler "richtig" geantwortet hat → sofort abbrechen
-        if "stop" in st.session_state and st.session_state.stop:
-            break
-
-    # Wenn der Balken abgelaufen ist und keiner verloren hat → nächster Spieler
-    if "stop" not in st.session_state or not st.session_state.stop:
-        st.session_state.aktiver_spieler = (st.session_state.aktiver_spieler + 1) % len(spieler)
-        st.rerun()
-
-    # Button: Spieler hat eine richtige Antwort gesagt
+    # Button sofort anzeigen
     if st.button(f"❌ {aktueller} hat eine richtige Antwort gesagt!"):
         st.session_state.verloren = aktueller
         st.session_state.spielgestartet = False
         st.session_state.stop = True
+        st.rerun()
+
+    # Laufender Balken
+    while time.time() - startzeit < zeitlimit:
+        if st.session_state.stop:
+            break
+        verstrichen = time.time() - startzeit
+        fortschritt = max(0, 1 - verstrichen / zeitlimit)
+
+        # HTML-basierten Balken anzeigen (damit wir Farbe ändern können)
+        balken_html = f"""
+        <div style='width: 100%; background-color: #ddd; border-radius: 10px; height: 25px;'>
+            <div style='width: {fortschritt*100}%;
+                        background-color: {farbe};
+                        height: 25px;
+                        border-radius: 10px;
+                        transition: width 0.1s linear;'>
+            </div>
+        </div>
+        """
+        platzhalter.markdown(balken_html, unsafe_allow_html=True)
+        time.sleep(0.1)
+
+    # Wenn der Timer abgelaufen ist und niemand verloren hat
+    if not st.session_state.stop:
+        st.session_state.aktiver_spieler = (st.session_state.aktiver_spieler + 1) % len(spieler)
         st.rerun()
 
 # --- VERLOREN BILDSCHIRM ---
