@@ -18,13 +18,13 @@ if "stop" not in st.session_state:
     st.session_state.stop = False
 
 # --- SPIELSETUP ---
-if not st.session_state.spielgestartet:
+if not st.session_state.spielgestartet and not st.session_state.verloren:
     st.header("🧑‍🤝‍🧑 Wie viele Spieler seid ihr?")
     anzahl = st.number_input("Anzahl Spieler", min_value=2, max_value=10, step=1)
 
     namen = []
     for i in range(int(anzahl)):
-        name = st.text_input(f"Name von Spieler {i+1}")
+        name = st.text_input(f"Name von Spieler {i+1}", key=f"name_{i}")
         namen.append(name)
 
     if st.button("🎬 Spiel starten"):
@@ -32,11 +32,12 @@ if not st.session_state.spielgestartet:
             st.session_state.spieler = namen
             st.session_state.spielgestartet = True
             st.session_state.stop = False
+            st.experimental_rerun()
         else:
             st.warning("Bitte tragt alle Namen ein!")
 
 # --- SPIEL LAUFEND ---
-else:
+elif st.session_state.spielgestartet and not st.session_state.verloren:
     spieler = st.session_state.spieler
     aktueller = spieler[st.session_state.aktiver_spieler]
     st.subheader(f"🔔 {aktueller} ist dran!")
@@ -49,23 +50,16 @@ else:
     platzhalter = st.empty()
     startzeit = time.time()
 
-    # Button sofort anzeigen
-    if st.button(f"❌ {aktueller} hat eine richtige Antwort gesagt!"):
-        st.session_state.verloren = aktueller
-        st.session_state.spielgestartet = False
-        st.session_state.stop = True
-        st.rerun()
-
-    # Laufender Balken
+    # Laufender Balken (animiert)
     while time.time() - startzeit < zeitlimit:
         if st.session_state.stop:
             break
         verstrichen = time.time() - startzeit
         fortschritt = max(0, 1 - verstrichen / zeitlimit)
 
-        # HTML-basierten Balken anzeigen (damit wir Farbe ändern können)
+        # HTML-balken mit Farbe
         balken_html = f"""
-        <div style='width: 100%; background-color: #ddd; border-radius: 10px; height: 25px;'>
+        <div style='width: 100%; background-color: #ddd; border-radius: 10px; height: 25px; margin-top: 30px;'>
             <div style='width: {fortschritt*100}%;
                         background-color: {farbe};
                         height: 25px;
@@ -77,15 +71,23 @@ else:
         platzhalter.markdown(balken_html, unsafe_allow_html=True)
         time.sleep(0.1)
 
-    # Wenn der Timer abgelaufen ist und niemand verloren hat
+    # Wenn der Timer abgelaufen ist und niemand verloren hat → nächster Spieler
     if not st.session_state.stop:
         st.session_state.aktiver_spieler = (st.session_state.aktiver_spieler + 1) % len(spieler)
-        st.rerun()
+        st.experimental_rerun()
+
+    # --- Knopf weiter unten platzieren ---
+    st.markdown("<div style='height: 80px;'></div>", unsafe_allow_html=True)
+    if st.button(f"❌ {aktueller} hat eine richtige Antwort gesagt!"):
+        st.session_state.verloren = aktueller
+        st.session_state.spielgestartet = False
+        st.session_state.stop = True
+        st.experimental_rerun()
 
 # --- VERLOREN BILDSCHIRM ---
-if st.session_state.verloren:
+elif st.session_state.verloren:
     st.error(f"💥 {st.session_state.verloren} hat verloren!")
     if st.button("🔁 Neues Spiel starten"):
         for key in list(st.session_state.keys()):
             del st.session_state[key]
-        st.rerun()
+        st.experimental_rerun()
