@@ -14,8 +14,8 @@ if "spielgestartet" not in st.session_state:
     st.session_state.spielgestartet = False
 if "verloren" not in st.session_state:
     st.session_state.verloren = None
-if "stop" not in st.session_state:
-    st.session_state.stop = False
+if "timer_start" not in st.session_state:
+    st.session_state.timer_start = None
 
 # --- SPIELSETUP ---
 if not st.session_state.spielgestartet and not st.session_state.verloren:
@@ -31,66 +31,61 @@ if not st.session_state.spielgestartet and not st.session_state.verloren:
         if all(namen):
             st.session_state.spieler = namen
             st.session_state.spielgestartet = True
-            st.session_state.stop = False
+            st.session_state.timer_start = time.time()
             st.rerun()
         else:
-            st.warning("Bitte tragt alle Namen ein!")
+            st.warning("❗ Bitte tragt alle Namen ein!")
 
 # --- SPIEL LAUFEND ---
 elif st.session_state.spielgestartet and not st.session_state.verloren:
     spieler = st.session_state.spieler
-    aktueller = spieler[st.session_state.aktiver_spieler]
+    aktueller_index = st.session_state.aktiver_spieler
+    aktueller = spieler[aktueller_index]
+
     st.subheader(f"🔔 {aktueller} ist dran!")
 
-    # Farben nach Spieleranzahl
+    # --- Farbrotation ---
     farben_dict = {
-        2: ["#ff4b4b", "#4b8bff"],  # rot, blau
-        3: ["#ff4b4b", "#4b8bff", "#36d67c"],  # rot, blau, grün
-        4: ["#ff4b4b", "#4b8bff", "#36d67c", "#ffd93d"],  # rot, blau, grün, gelb
-        5: ["#ff4b4b", "#4b8bff", "#36d67c", "#ffd93d", "#ff4bf0"],  # rot, blau, grün, gelb, pink
+        2: ["#ff4b4b", "#4b8bff"],
+        3: ["#ff4b4b", "#4b8bff", "#36d67c"],
+        4: ["#ff4b4b", "#4b8bff", "#36d67c", "#ffd93d"],
+        5: ["#ff4b4b", "#4b8bff", "#36d67c", "#ffd93d", "#ff4bf0"],
     }
-    farben = farben_dict.get(len(spieler), ["#ff4b4b", "#4b8bff"])  # Fallback auf rot/blau
-    farbe = farben[st.session_state.aktiver_spieler % len(farben)]
+    farben = farben_dict.get(len(spieler), ["#ff4b4b", "#4b8bff"])
+    farbe = farben[aktueller_index % len(farben)]
 
-    zeitlimit = 10  # Sekunden pro Runde
-    platzhalter = st.empty()
-    startzeit = time.time()
+    zeitlimit = 10
+    verstrichen = time.time() - st.session_state.timer_start
+    fortschritt = max(0, 1 - verstrichen / zeitlimit)
 
-    # --- Laufender Balken (animiert) ---
-    while True:
-        if st.session_state.stop:
-            break
-
-        verstrichen = time.time() - startzeit
-        fortschritt = max(0, 1 - verstrichen / zeitlimit)
-
-        balken_html = f"""
-        <div style='width: 100%; background-color: #ddd; border-radius: 10px; height: 25px; margin-top: 30px;'>
-            <div style='width: {fortschritt*100}%;
-                        background-color: {farbe};
-                        height: 25px;
-                        border-radius: 10px;
-                        transition: width 0.1s linear;'>
-            </div>
+    # --- Fortschrittsbalken (HTML, für Farbe) ---
+    balken_html = f"""
+    <div style='width: 100%; background-color: #ddd; border-radius: 10px; height: 25px; margin-top: 30px;'>
+        <div style='width: {fortschritt*100}%;
+                    background-color: {farbe};
+                    height: 25px;
+                    border-radius: 10px;
+                    transition: width 0.1s linear;'>
         </div>
-        """
-        platzhalter.markdown(balken_html, unsafe_allow_html=True)
-        time.sleep(0.1)
+    </div>
+    """
+    st.markdown(balken_html, unsafe_allow_html=True)
 
-        if verstrichen >= zeitlimit:
-            break
+    # --- Countdown-Zahl ---
+    restzeit = int(max(0, zeitlimit - verstrichen))
+    st.markdown(f"<h4 style='text-align:center;'>⏳ Noch {restzeit} Sekunden</h4>", unsafe_allow_html=True)
 
-    # --- Wenn Zeit vorbei ist → nächster Spieler ---
-    if not st.session_state.stop:
-        st.session_state.aktiver_spieler = (st.session_state.aktiver_spieler + 1) % len(spieler)
-        st.rerun()
-
-    # --- Knopf unten anzeigen ---
+    # --- Button unten ---
     st.markdown("<div style='height: 100px;'></div>", unsafe_allow_html=True)
     if st.button(f"❌ {aktueller} hat eine richtige Antwort gesagt!"):
         st.session_state.verloren = aktueller
         st.session_state.spielgestartet = False
-        st.session_state.stop = True
+        st.rerun()
+
+    # --- Wenn Zeit abgelaufen ist → nächster Spieler ---
+    if verstrichen >= zeitlimit:
+        st.session_state.aktiver_spieler = (aktueller_index + 1) % len(spieler)
+        st.session_state.timer_start = time.time()
         st.rerun()
 
 # --- VERLOREN BILDSCHIRM ---
